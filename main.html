@@ -1,0 +1,539 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ellen Ochoa: Space Science Adventure</title>
+<style>
+  body {
+    margin: 0;
+    background: #050816;
+    color: white;
+    font-family: Arial, sans-serif;
+    overflow: hidden;
+  }
+
+  canvas {
+    display: block;
+    margin: auto;
+    background: linear-gradient(#050816, #101a3a);
+    border: 3px solid #4cc9f0;
+  }
+
+  #info {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    background: rgba(0,0,0,.75);
+    padding: 12px;
+    border-radius: 10px;
+    max-width: 360px;
+    line-height: 1.4;
+  }
+
+  #startScreen {
+    position: fixed;
+    inset: 0;
+    background: radial-gradient(circle, #172554, #020617);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    z-index: 5;
+  }
+
+  #startBox {
+    max-width: 700px;
+    padding: 30px;
+  }
+
+  h1 {
+    color: #4cc9f0;
+    font-size: 42px;
+  }
+
+  button {
+    background: #4cc9f0;
+    border: none;
+    padding: 14px 25px;
+    border-radius: 8px;
+    font-size: 18px;
+    cursor: pointer;
+  }
+
+  button:hover {
+    background: #90e0ef;
+  }
+</style>
+</head>
+
+<body>
+
+<div id="startScreen">
+  <div id="startBox">
+    <h1>Ellen Ochoa: Space Science Adventure</h1>
+    <p>
+      Explore the life and scientific achievements of Dr. Ellen Ochoa.
+      Collect knowledge, avoid space debris, and complete missions
+      about her life, education, inventions, and impact on science.
+    </p>
+    <button onclick="startGame()">Start Mission</button>
+  </div>
+</div>
+
+<div id="info">
+  <b>Ellen Ochoa Mission</b><br>
+  Score: <span id="score">0</span><br>
+  Knowledge: <span id="knowledge">0</span>/10<br>
+  Mission: <span id="mission">Explore space</span>
+</div>
+
+<canvas id="game" width="1000" height="650"></canvas>
+
+<script>
+const canvas = document.getElementById("game");
+const ctx = canvas.getContext("2d");
+
+let gameRunning = false;
+let score = 0;
+let knowledge = 0;
+let keys = {};
+
+const player = {
+  x: 500,
+  y: 550,
+  width: 45,
+  height: 45,
+  speed: 5
+};
+
+let stars = [];
+let debris = [];
+let facts = [];
+let currentFact = null;
+let factTimer = 0;
+
+const missions = [
+  {
+    title: "Biography",
+    text:
+      "Dr. Ellen Ochoa was born May 10, 1958, in Los Angeles, California. " +
+      "She became the first Latina woman to travel into space in 1993.",
+    answer: "biography"
+  },
+  {
+    title: "Education",
+    text:
+      "Ochoa attended San Diego State University and earned a bachelor's degree " +
+      "in physics in 1980. She later earned master's and doctoral degrees in " +
+      "electrical engineering from Stanford University.",
+    answer: "education"
+  },
+  {
+    title: "Early Challenges",
+    text:
+      "Ochoa has spoken about how her mother encouraged education and helped her " +
+      "and her siblings pursue opportunities. She also entered a scientific field " +
+      "where women and Latinas were historically underrepresented.",
+    answer: "challenges"
+  },
+  {
+    title: "Optical Research",
+    text:
+      "Before becoming an astronaut, Ochoa worked on optical systems and signal " +
+      "processing. Her research involved methods for processing images and recognizing " +
+      "patterns using optical information.",
+    answer: "science"
+  },
+  {
+    title: "Patents",
+    text:
+      "Ochoa was a co-inventor on several patents involving optical inspection, " +
+      "image processing, and systems that could analyze information using light.",
+    answer: "inventions"
+  },
+  {
+    title: "First Spaceflight",
+    text:
+      "In April 1993, Ochoa flew aboard Space Shuttle Discovery on STS-56. " +
+      "The mission studied Earth's atmosphere and the effects of solar activity.",
+    answer: "space"
+  },
+  {
+    title: "Scientific Principle",
+    text:
+      "Optical information can be converted into electronic signals. Computers can " +
+      "then process those signals to identify patterns, improve images, or extract data.",
+    answer: "principle"
+  },
+  {
+    title: "Space Research",
+    text:
+      "Ochoa flew on four Space Shuttle missions and spent nearly 1,000 hours in space, " +
+      "participating in scientific and Earth-observation work.",
+    answer: "missions"
+  },
+  {
+    title: "NASA Leadership",
+    text:
+      "Ochoa became the first Latina director of NASA's Johnson Space Center, serving " +
+      "as director from 2013 to 2018.",
+    answer: "leadership"
+  },
+  {
+    title: "Modern Impact",
+    text:
+      "Ochoa's career continues to represent the connection between electrical engineering, " +
+      "optics, computing, space exploration, and STEM education.",
+    answer: "impact"
+  }
+];
+
+function startGame() {
+  document.getElementById("startScreen").style.display = "none";
+  gameRunning = true;
+
+  for (let i = 0; i < 150; i++) {
+    stars.push({
+      x: Math.random() * canvas.width,
+      y: Math.random() * canvas.height,
+      size: Math.random() * 2 + 1,
+      speed: Math.random() * 1.5 + .2
+    });
+  }
+
+  for (let i = 0; i < 12; i++) {
+    createDebris();
+  }
+
+  facts = [...missions];
+  requestAnimationFrame(gameLoop);
+}
+
+function createDebris() {
+  debris.push({
+    x: Math.random() * canvas.width,
+    y: -Math.random() * canvas.height,
+    size: Math.random() * 20 + 15,
+    speed: Math.random() * 2 + 1
+  });
+}
+
+function createFact() {
+  if (facts.length === 0) return;
+
+  const index = Math.floor(Math.random() * facts.length);
+  const fact = facts.splice(index, 1);
+
+  const obj = {
+    x: Math.random() * (canvas.width - 50) + 25,
+    y: -50,
+    size: 25,
+    speed: 2,
+    data: fact[0]
+  };
+
+  currentFact = obj;
+}
+
+function drawStars() {
+  ctx.fillStyle = "white";
+
+  stars.forEach(star => {
+    ctx.globalAlpha = Math.random() * .5 + .5;
+    ctx.fillRect(star.x, star.y, star.size, star.size);
+
+    star.y += star.speed;
+
+    if (star.y > canvas.height) {
+      star.y = 0;
+      star.x = Math.random() * canvas.width;
+    }
+  });
+
+  ctx.globalAlpha = 1;
+}
+
+function drawPlayer() {
+  ctx.save();
+
+  ctx.translate(player.x, player.y);
+
+  // astronaut body
+  ctx.fillStyle = "white";
+  ctx.fillRect(-20, -10, 40, 40);
+
+  // helmet
+  ctx.beginPath();
+  ctx.arc(0, -15, 18, 0, Math.PI * 2);
+  ctx.fillStyle = "#e5e7eb";
+  ctx.fill();
+
+  // visor
+  ctx.beginPath();
+  ctx.arc(0, -15, 12, 0, Math.PI * 2);
+  ctx.fillStyle = "#2563eb";
+  ctx.fill();
+
+  // backpack
+  ctx.fillStyle = "#64748b";
+  ctx.fillRect(-27, -8, 7, 28);
+
+  // NASA-like red detail
+  ctx.fillStyle = "#ef4444";
+  ctx.fillRect(-15, 5, 30, 4);
+
+  ctx.restore();
+}
+
+function drawDebris() {
+  debris.forEach(d => {
+    ctx.save();
+    ctx.translate(d.x, d.y);
+    ctx.rotate(d.y / 50);
+
+    ctx.fillStyle = "#64748b";
+    ctx.beginPath();
+    ctx.moveTo(-d.size, -d.size / 2);
+    ctx.lineTo(d.size / 2, -d.size);
+    ctx.lineTo(d.size, d.size / 3);
+    ctx.lineTo(0, d.size);
+    ctx.lineTo(-d.size / 2, d.size / 2);
+    ctx.closePath();
+    ctx.fill();
+
+    ctx.restore();
+
+    d.y += d.speed;
+
+    if (d.y > canvas.height + 50) {
+      d.y = -50;
+      d.x = Math.random() * canvas.width;
+    }
+  });
+}
+
+function drawFact() {
+  if (!currentFact) return;
+
+  ctx.beginPath();
+  ctx.arc(currentFact.x, currentFact.y, currentFact.size, 0, Math.PI * 2);
+  ctx.fillStyle = "#facc15";
+  ctx.fill();
+
+  ctx.fillStyle = "#111827";
+  ctx.font = "bold 22px Arial";
+  ctx.textAlign = "center";
+  ctx.fillText("?", currentFact.x, currentFact.y + 8);
+  ctx.textAlign = "left";
+
+  currentFact.y += currentFact.speed;
+
+  if (currentFact.y > canvas.height + 40) {
+    currentFact = null;
+  }
+}
+
+function collision(a, b) {
+  return (
+    a.x - a.width / 2 < b.x + b.size &&
+    a.x + a.width / 2 > b.x - b.size &&
+    a.y - a.height / 2 < b.y + b.size &&
+    a.y + a.height / 2 > b.y - b.size
+  );
+}
+
+function checkDebrisCollision() {
+  for (let d of debris) {
+    if (
+      player.x - player.width / 2 < d.x + d.size &&
+      player.x + player.width / 2 > d.x - d.size &&
+      player.y - player.height / 2 < d.y + d.size &&
+      player.y + player.height / 2 > d.y - d.size
+    ) {
+      score = Math.max(0, score - 5);
+
+      d.y = -50;
+      d.x = Math.random() * canvas.width;
+
+      updateHUD();
+    }
+  }
+}
+
+function checkFactCollision() {
+  if (!currentFact) return;
+
+  if (collision(player, currentFact)) {
+    knowledge++;
+    score += 100;
+
+    showFact(currentFact.data);
+
+    currentFact = null;
+    updateHUD();
+
+    if (knowledge >= 10) {
+      setTimeout(endGame, 800);
+    }
+  }
+}
+
+function showFact(fact) {
+  const box = document.createElement("div");
+
+  box.style.position = "fixed";
+  box.style.left = "50%";
+  box.style.top = "50%";
+  box.style.transform = "translate(-50%, -50%)";
+  box.style.background = "#111827";
+  box.style.border = "3px solid #4cc9f0";
+  box.style.padding = "25px";
+  box.style.borderRadius = "15px";
+  box.style.maxWidth = "650px";
+  box.style.zIndex = "10";
+  box.style.boxShadow = "0 0 30px #4cc9f0";
+
+  box.innerHTML = `
+    <h2 style="color:#4cc9f0">${fact.title}</h2>
+    <p>${fact.text}</p>
+    <button>Continue Mission</button>
+  `;
+
+  document.body.appendChild(box);
+
+  box.querySelector("button").onclick = () => {
+    box.remove();
+  };
+}
+
+function updateHUD() {
+  document.getElementById("score").textContent = score;
+  document.getElementById("knowledge").textContent = knowledge;
+
+  if (knowledge < 3) {
+    document.getElementById("mission").textContent =
+      "Learn about Ochoa's early life";
+  } else if (knowledge < 6) {
+    document.getElementById("mission").textContent =
+      "Discover her scientific research";
+  } else if (knowledge < 9) {
+    document.getElementById("mission").textContent =
+      "Explore her space missions";
+  } else {
+    document.getElementById("mission").textContent =
+      "Complete the final mission";
+  }
+}
+
+function endGame() {
+  gameRunning = false;
+
+  const screen = document.createElement("div");
+
+  screen.style.position = "fixed";
+  screen.style.inset = "0";
+  screen.style.background = "rgba(2,6,23,.97)";
+  screen.style.display = "flex";
+  screen.style.alignItems = "center";
+  screen.style.justifyContent = "center";
+  screen.style.textAlign = "center";
+  screen.style.zIndex = "20";
+
+  screen.innerHTML = `
+    <div style="max-width:700px;padding:30px">
+      <h1 style="color:#4cc9f0">Mission Complete!</h1>
+
+      <h2>You discovered Ellen Ochoa's scientific journey.</h2>
+
+      <p>
+        Ellen Ochoa combined physics, electrical engineering, optics,
+        computer science, and space exploration throughout her career.
+      </p>
+
+      <p>
+        Her optical research contributed to technologies for processing
+        images and information. Her NASA career included four Space Shuttle
+        missions, and she later became director of NASA's Johnson Space Center.
+      </p>
+
+      <p>
+        Her career also demonstrates the continuing importance of increasing
+        opportunities for students from groups historically underrepresented
+        in science and engineering.
+      </p>
+
+      <h2>Final Score: ${score}</h2>
+
+      <button onclick="location.reload()">Play Again</button>
+    </div>
+  `;
+
+  document.body.appendChild(screen);
+}
+
+document.addEventListener("keydown", e => {
+  keys[e.key.toLowerCase()] = true;
+});
+
+document.addEventListener("keyup", e => {
+  keys[e.key.toLowerCase()] = false;
+});
+
+function movePlayer() {
+  if (keys["arrowleft"] || keys["a"]) {
+    player.x -= player.speed;
+  }
+
+  if (keys["arrowright"] || keys["d"]) {
+    player.x += player.speed;
+  }
+
+  if (keys["arrowup"] || keys["w"]) {
+    player.y -= player.speed;
+  }
+
+  if (keys["arrowdown"] || keys["s"]) {
+    player.y += player.speed;
+  }
+
+  player.x = Math.max(30, Math.min(canvas.width - 30, player.x));
+  player.y = Math.max(60, Math.min(canvas.height - 30, player.y));
+}
+
+let spawnTimer = 0;
+
+function gameLoop() {
+  if (!gameRunning) return;
+
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  drawStars();
+
+  movePlayer();
+
+  drawDebris();
+
+  if (!currentFact) {
+    spawnTimer++;
+
+    if (spawnTimer > 100) {
+      createFact();
+      spawnTimer = 0;
+    }
+  }
+
+  drawFact();
+  drawPlayer();
+
+  checkDebrisCollision();
+  checkFactCollision();
+
+  requestAnimationFrame(gameLoop);
+}
+
+updateHUD();
+</script>
+
+</body>
+</html>
