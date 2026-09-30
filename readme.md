@@ -157,15 +157,6 @@ You can contribute by:
 * Improving graphics
 * Adding additional levels
 
-To contribute:
-
-```bash
-git fork
-git clone YOUR-FORK-URL
-```
-
-Make your changes, commit them, and open a pull request.
-
 ## 📄 License
 
 This project can be released under the **MIT License**.
